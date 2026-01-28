@@ -1,0 +1,7 @@
+{
+  "name": "factory-arrange",
+  "compatibility_date": "2026-01-28",
+  "assets": {
+    "directory": "./"  // ビルド済みファイルのディレクトリ
+  }
+}
