@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factory Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #16213e;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 2px solid #0f3460;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #e94560;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .control-group input {
+            width: 60px;
+            padding: 5px 8px;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #e94560;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ff6b6b;
+        }
+
+        .btn-secondary {
+            background: #0f3460;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #1a4a7a;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            width: 200px;
+            background: #16213e;
+            padding: 15px;
+            border-right: 2px solid #0f3460;
+            overflow-y: auto;
+        }
+
+        .toolbar h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+
+        .tool-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #1a1a2e;
+            border: 2px solid #0f3460;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-item:hover {
+            border-color: #e94560;
+        }
+
+        .tool-item.selected {
+            border-color: #e94560;
+            background: #2a1a3e;
+        }
+
+        .tool-item .tool-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .tool-item .tool-desc {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .canvas-container {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            background: #0d0d1a;
+        }
+
+        #factory-grid {
+            display: inline-block;
+            border: 2px solid #0f3460;
+            background: #1a1a2e;
+        }
+
+        .grid-row {
+            display: flex;
+        }
+
+        .grid-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #2a2a4e;
+            position: relative;
+            transition: background 0.1s;
+        }
+
+        .grid-cell:hover {
+            background: rgba(233, 69, 96, 0.2);
+        }
+
+        .grid-cell.occupied {
+            background: rgba(15, 52, 96, 0.5);
+        }
+
+        .grid-cell.preview {
+            background: rgba(233, 69, 96, 0.3);
+        }
+
+        .grid-cell.preview-invalid {
+            background: rgba(255, 0, 0, 0.4);
+        }
+
+        /* Conveyor styles */
+        .conveyor {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #3a3a5e;
+        }
+
+        .conveyor-arrow {
+            font-size: 20px;
+            color: #ffcc00;
+        }
+
+        .conveyor.dir-up .conveyor-arrow { transform: rotate(-90deg); }
+        .conveyor.dir-down .conveyor-arrow { transform: rotate(90deg); }
+        .conveyor.dir-left .conveyor-arrow { transform: rotate(180deg); }
+        .conveyor.dir-right .conveyor-arrow { transform: rotate(0deg); }
+
+        /* Smelter styles */
+        .smelter {
+            position: absolute;
+            background: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%);
+            border: 2px solid #daa520;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        .smelter-ports {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .port {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .port.input {
+            background: #4CAF50;
+            border: 2px solid #2E7D32;
+        }
+
+        .port.output {
+            background: #FF9800;
+            border: 2px solid #E65100;
+        }
+
+        /* Item styles */
+        .item {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            transition: left 0.1s linear, top 0.1s linear;
+        }
+
+        .item.ore {
+            background: radial-gradient(circle, #888 0%, #555 100%);
+            border: 1px solid #333;
+        }
+
+        .item.ingot {
+            background: radial-gradient(circle, #ffd700 0%, #daa520 100%);
+            border: 1px solid #b8860b;
+        }
+
+        /* Simulation controls */
+        .sim-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .speed-display {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        /* Status bar */
+        .status-bar {
+            background: #16213e;
+            padding: 10px 20px;
+            border-top: 2px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .rotation-indicator {
+            padding: 5px 10px;
+            background: #1a1a2e;
+            border-radius: 4px;
+        }
+
+        /* Info panel */
+        .info-panel {
+            width: 250px;
+            background: #16213e;
+            padding: 15px;
+            border-left: 2px solid #0f3460;
+            overflow-y: auto;
+        }
+
+        .info-panel h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+
+        .info-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #1a1a2e;
+            border-radius: 6px;
+        }
+
+        .info-section h4 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: #ffcc00;
+        }
+
+        .info-section p {
+            font-size: 0.8rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+
+        .keybinds {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .keybinds div {
+            margin-bottom: 5px;
+        }
+
+        .keybinds kbd {
+            background: #0f3460;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Factory Simulator</h1>
+        <div class="controls">
+            <div class="control-group">
+                <label>Width:</label>
+                <input type="number" id="grid-width" value="20" min="5" max="100">
+            </div>
+            <div class="control-group">
+                <label>Height:</label>
+                <input type="number" id="grid-height" value="15" min="5" max="100">
+            </div>
+            <button class="btn-primary" onclick="resizeGrid()">Apply Size</button>
+            <button class="btn-secondary" onclick="clearGrid()">Clear All</button>
+        </div>
+        <div class="sim-controls">
+            <button class="btn-primary" id="sim-toggle" onclick="toggleSimulation()">Start</button>
+            <button class="btn-secondary" onclick="spawnTestItem()">Spawn Item</button>
+            <span class="speed-display">Speed: <span id="speed-value">1x</span></span>
+            <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1" onchange="updateSpeed()">
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="toolbar">
+            <h3>Equipment</h3>
+            <div class="tool-item selected" data-tool="conveyor" onclick="selectTool('conveyor')">
+                <div class="tool-name">Conveyor</div>
+                <div class="tool-desc">1x1 - Transports items</div>
+            </div>
+            <div class="tool-item" data-tool="smelter" onclick="selectTool('smelter')">
+                <div class="tool-name">Smelter</div>
+                <div class="tool-desc">3x3 - Processes ore to ingots</div>
+            </div>
+            <div class="tool-item" data-tool="spawner" onclick="selectTool('spawner')">
+                <div class="tool-name">Item Spawner</div>
+                <div class="tool-desc">1x1 - Spawns ore items</div>
+            </div>
+            <div class="tool-item" data-tool="delete" onclick="selectTool('delete')">
+                <div class="tool-name">Delete</div>
+                <div class="tool-desc">Remove equipment</div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div id="factory-grid"></div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Information</h3>
+            <div class="info-section">
+                <h4>Controls</h4>
+                <div class="keybinds">
+                    <div><kbd>R</kbd> Rotate equipment</div>
+                    <div><kbd>1</kbd> Select Conveyor</div>
+                    <div><kbd>2</kbd> Select Smelter</div>
+                    <div><kbd>3</kbd> Select Spawner</div>
+                    <div><kbd>X</kbd> Delete mode</div>
+                    <div><kbd>Space</kbd> Toggle simulation</div>
+                </div>
+            </div>
+            <div class="info-section">
+                <h4>Smelter</h4>
+                <p>Input: Left side (3 ports)<br>
+                   Output: Right side (3 ports)<br>
+                   Converts ore → ingot</p>
+            </div>
+            <div class="info-section">
+                <h4>Statistics</h4>
+                <p>Items on grid: <span id="item-count">0</span><br>
+                   Items processed: <span id="processed-count">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="status-text">Ready</span>
+        <span class="rotation-indicator">Rotation: <span id="rotation-display">→ Right</span></span>
+    </div>
+
+    <script>
+        // Game State
+        const state = {
+            gridWidth: 20,
+            gridHeight: 15,
+            selectedTool: 'conveyor',
+            rotation: 0, // 0=right, 1=down, 2=left, 3=up
+            grid: [], // 2D array of cell data
+            equipment: [], // All placed equipment
+            items: [], // Active items on the grid
+            isRunning: false,
+            speed: 1,
+            processedCount: 0,
+            lastUpdate: 0
+        };
+
+        const DIRECTIONS = ['right', 'down', 'left', 'up'];
+        const DIR_VECTORS = {
+            right: { x: 1, y: 0 },
+            down: { x: 0, y: 1 },
+            left: { x: -1, y: 0 },
+            up: { x: 0, y: -1 }
+        };
+
+        // Initialize
+        function init() {
+            createGrid();
+            setupEventListeners();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function createGrid() {
+            const container = document.getElementById('factory-grid');
+            container.innerHTML = '';
+            state.grid = [];
+
+            for (let y = 0; y < state.gridHeight; y++) {
+                const row = document.createElement('div');
+                row.className = 'grid-row';
+                state.grid[y] = [];
+
+                for (let x = 0; x < state.gridWidth; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    row.appendChild(cell);
+                    state.grid[y][x] = { equipment: null, occupied: false };
+                }
+                container.appendChild(row);
+            }
+        }
+
+        function setupEventListeners() {
+            const grid = document.getElementById('factory-grid');
+
+            grid.addEventListener('click', handleGridClick);
+            grid.addEventListener('mousemove', handleGridHover);
+            grid.addEventListener('mouseleave', clearPreview);
+
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        function handleGridClick(e) {
+            const cell = e.target.closest('.grid-cell');
+            if (!cell) return;
+
+            const x = parseInt(cell.dataset.x);
+            const y = parseInt(cell.dataset.y);
+
+            if (state.selectedTool === 'delete') {
+                deleteEquipment(x, y);
+            } else {
+                placeEquipment(x, y);
+            }
+        }
+
+        function handleGridHover(e) {
+            const cell = e.target.closest('.grid-cell');
+            if (!cell) return;
+
+            clearPreview();
+
+            const x = parseInt(cell.dataset.x);
+            const y = parseInt(cell.dataset.y);
+
+            showPreview(x, y);
+        }
+
+        function clearPreview() {
+            document.querySelectorAll('.grid-cell.preview, .grid-cell.preview-invalid').forEach(cell => {
+                cell.classList.remove('preview', 'preview-invalid');
+            });
+        }
+
+        function showPreview(x, y) {
+            const size = getEquipmentSize(state.selectedTool);
+            const canPlace = canPlaceEquipment(x, y, size);
+
+            for (let dy = 0; dy < size.h; dy++) {
+                for (let dx = 0; dx < size.w; dx++) {
+                    const cell = getCellElement(x + dx, y + dy);
+                    if (cell) {
+                        cell.classList.add(canPlace ? 'preview' : 'preview-invalid');
+                    }
+                }
+            }
+        }
+
+        function getEquipmentSize(tool) {
+            switch (tool) {
+                case 'smelter': return { w: 3, h: 3 };
+                default: return { w: 1, h: 1 };
+            }
+        }
+
+        function canPlaceEquipment(x, y, size) {
+            for (let dy = 0; dy < size.h; dy++) {
+                for (let dx = 0; dx < size.w; dx++) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx >= state.gridWidth || ny >= state.gridHeight) return false;
+                    if (state.grid[ny][nx].occupied) return false;
+                }
+            }
+            return true;
+        }
+
+        function placeEquipment(x, y) {
+            const size = getEquipmentSize(state.selectedTool);
+            if (!canPlaceEquipment(x, y, size)) {
+                setStatus('Cannot place here!');
+                return;
+            }
+
+            const equipment = createEquipment(state.selectedTool, x, y, state.rotation);
+            state.equipment.push(equipment);
+
+            // Mark cells as occupied
+            for (let dy = 0; dy < size.h; dy++) {
+                for (let dx = 0; dx < size.w; dx++) {
+                    state.grid[y + dy][x + dx].occupied = true;
+                    state.grid[y + dy][x + dx].equipment = equipment;
+                    const cell = getCellElement(x + dx, y + dy);
+                    if (cell) cell.classList.add('occupied');
+                }
+            }
+
+            renderEquipment(equipment);
+            setStatus(`Placed ${state.selectedTool}`);
+        }
+
+        function createEquipment(type, x, y, rotation) {
+            const base = {
+                id: Date.now() + Math.random(),
+                type,
+                x,
+                y,
+                rotation,
+                direction: DIRECTIONS[rotation]
+            };
+
+            switch (type) {
+                case 'smelter':
+                    return {
+                        ...base,
+                        width: 3,
+                        height: 3,
+                        inputBuffer: [],
+                        outputBuffer: [],
+                        processingItem: null,
+                        processTime: 2000, // 2 seconds to process
+                        processStart: 0
+                    };
+                case 'spawner':
+                    return {
+                        ...base,
+                        width: 1,
+                        height: 1,
+                        spawnInterval: 2000,
+                        lastSpawn: 0
+                    };
+                default: // conveyor
+                    return {
+                        ...base,
+                        width: 1,
+                        height: 1
+                    };
+            }
+        }
+
+        function renderEquipment(eq) {
+            const cell = getCellElement(eq.x, eq.y);
+            if (!cell) return;
+
+            let element;
+
+            switch (eq.type) {
+                case 'conveyor':
+                    element = document.createElement('div');
+                    element.className = `conveyor dir-${eq.direction}`;
+                    element.innerHTML = '<span class="conveyor-arrow">➤</span>';
+                    element.dataset.equipmentId = eq.id;
+                    cell.appendChild(element);
+                    break;
+
+                case 'smelter':
+                    element = document.createElement('div');
+                    element.className = 'smelter';
+                    element.style.width = `${eq.width * 40 - 4}px`;
+                    element.style.height = `${eq.height * 40 - 4}px`;
+                    element.innerHTML = '🔥 Smelter';
+                    element.dataset.equipmentId = eq.id;
+
+                    // Add ports based on rotation
+                    const ports = document.createElement('div');
+                    ports.className = 'smelter-ports';
+
+                    // Input ports (left side by default, changes with rotation)
+                    // Output ports (right side by default, changes with rotation)
+                    const portPositions = getSmelterPortPositions(eq.rotation);
+
+                    portPositions.inputs.forEach(pos => {
+                        const port = document.createElement('div');
+                        port.className = 'port input';
+                        port.style.left = pos.x + 'px';
+                        port.style.top = pos.y + 'px';
+                        ports.appendChild(port);
+                    });
+
+                    portPositions.outputs.forEach(pos => {
+                        const port = document.createElement('div');
+                        port.className = 'port output';
+                        port.style.left = pos.x + 'px';
+                        port.style.top = pos.y + 'px';
+                        ports.appendChild(port);
+                    });
+
+                    element.appendChild(ports);
+                    cell.appendChild(element);
+                    break;
+
+                case 'spawner':
+                    element = document.createElement('div');
+                    element.className = `conveyor dir-${eq.direction}`;
+                    element.style.background = '#2e7d32';
+                    element.innerHTML = '<span class="conveyor-arrow">⬤</span>';
+                    element.dataset.equipmentId = eq.id;
+                    cell.appendChild(element);
+                    break;
+            }
+        }
+
+        function getSmelterPortPositions(rotation) {
+            const size = 3 * 40 - 4; // smelter size in pixels
+            const positions = { inputs: [], outputs: [] };
+
+            // Port spacing
+            const spacing = size / 4;
+
+            switch (rotation) {
+                case 0: // Input left, output right
+                    for (let i = 1; i <= 3; i++) {
+                        positions.inputs.push({ x: -5, y: spacing * i - 5 });
+                        positions.outputs.push({ x: size - 5, y: spacing * i - 5 });
+                    }
+                    break;
+                case 1: // Input top, output bottom
+                    for (let i = 1; i <= 3; i++) {
+                        positions.inputs.push({ x: spacing * i - 5, y: -5 });
+                        positions.outputs.push({ x: spacing * i - 5, y: size - 5 });
+                    }
+                    break;
+                case 2: // Input right, output left
+                    for (let i = 1; i <= 3; i++) {
+                        positions.inputs.push({ x: size - 5, y: spacing * i - 5 });
+                        positions.outputs.push({ x: -5, y: spacing * i - 5 });
+                    }
+                    break;
+                case 3: // Input bottom, output top
+                    for (let i = 1; i <= 3; i++) {
+                        positions.inputs.push({ x: spacing * i - 5, y: size - 5 });
+                        positions.outputs.push({ x: spacing * i - 5, y: -5 });
+                    }
+                    break;
+            }
+
+            return positions;
+        }
+
+        function deleteEquipment(x, y) {
+            const cellData = state.grid[y][x];
+            if (!cellData.equipment) {
+                setStatus('Nothing to delete');
+                return;
+            }
+
+            const eq = cellData.equipment;
+
+            // Remove from equipment list
+            state.equipment = state.equipment.filter(e => e.id !== eq.id);
+
+            // Clear cells
+            for (let dy = 0; dy < eq.height; dy++) {
+                for (let dx = 0; dx < eq.width; dx++) {
+                    const nx = eq.x + dx;
+                    const ny = eq.y + dy;
+                    state.grid[ny][nx].occupied = false;
+                    state.grid[ny][nx].equipment = null;
+                    const cell = getCellElement(nx, ny);
+                    if (cell) {
+                        cell.classList.remove('occupied');
+                        cell.innerHTML = '';
+                    }
+                }
+            }
+
+            setStatus('Equipment deleted');
+        }
+
+        function getCellElement(x, y) {
+            if (x < 0 || y < 0 || x >= state.gridWidth || y >= state.gridHeight) return null;
+            return document.querySelector(`.grid-cell[data-x="${x}"][data-y="${y}"]`);
+        }
+
+        function selectTool(tool) {
+            state.selectedTool = tool;
+            document.querySelectorAll('.tool-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.tool === tool);
+            });
+            setStatus(`Selected: ${tool}`);
+        }
+
+        function handleKeyDown(e) {
+            switch (e.key.toLowerCase()) {
+                case 'r':
+                    state.rotation = (state.rotation + 1) % 4;
+                    updateRotationDisplay();
+                    break;
+                case '1':
+                    selectTool('conveyor');
+                    break;
+                case '2':
+                    selectTool('smelter');
+                    break;
+                case '3':
+                    selectTool('spawner');
+                    break;
+                case 'x':
+                    selectTool('delete');
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    toggleSimulation();
+                    break;
+            }
+        }
+
+        function updateRotationDisplay() {
+            const arrows = ['→ Right', '↓ Down', '← Left', '↑ Up'];
+            document.getElementById('rotation-display').textContent = arrows[state.rotation];
+        }
+
+        function resizeGrid() {
+            const newWidth = parseInt(document.getElementById('grid-width').value);
+            const newHeight = parseInt(document.getElementById('grid-height').value);
+
+            if (newWidth < 5 || newWidth > 100 || newHeight < 5 || newHeight > 100) {
+                setStatus('Invalid grid size (5-100)');
+                return;
+            }
+
+            state.gridWidth = newWidth;
+            state.gridHeight = newHeight;
+            state.equipment = [];
+            state.items = [];
+            createGrid();
+            setStatus(`Grid resized to ${newWidth}x${newHeight}`);
+        }
+
+        function clearGrid() {
+            state.equipment = [];
+            state.items = [];
+            state.processedCount = 0;
+            createGrid();
+            updateStats();
+            setStatus('Grid cleared');
+        }
+
+        function setStatus(text) {
+            document.getElementById('status-text').textContent = text;
+        }
+
+        // Simulation
+        function toggleSimulation() {
+            state.isRunning = !state.isRunning;
+            document.getElementById('sim-toggle').textContent = state.isRunning ? 'Stop' : 'Start';
+            setStatus(state.isRunning ? 'Simulation running' : 'Simulation stopped');
+        }
+
+        function updateSpeed() {
+            state.speed = parseFloat(document.getElementById('speed-slider').value);
+            document.getElementById('speed-value').textContent = state.speed + 'x';
+        }
+
+        function spawnTestItem() {
+            // Spawn an ore item at the first spawner or conveyor found
+            const spawner = state.equipment.find(e => e.type === 'spawner');
+            if (spawner) {
+                spawnItem(spawner.x, spawner.y, 'ore', spawner.direction);
+                return;
+            }
+
+            const conveyor = state.equipment.find(e => e.type === 'conveyor');
+            if (conveyor) {
+                spawnItem(conveyor.x, conveyor.y, 'ore', conveyor.direction);
+                return;
+            }
+
+            setStatus('Place a spawner or conveyor first!');
+        }
+
+        function spawnItem(x, y, type, direction) {
+            const item = {
+                id: Date.now() + Math.random(),
+                type,
+                x: x + 0.5,
+                y: y + 0.5,
+                targetX: x + 0.5,
+                targetY: y + 0.5,
+                direction,
+                element: null,
+                inSmelter: false
+            };
+
+            const element = document.createElement('div');
+            element.className = `item ${type}`;
+            element.style.left = (item.x * 40) + 'px';
+            element.style.top = (item.y * 40) + 'px';
+            document.getElementById('factory-grid').appendChild(element);
+            item.element = element;
+
+            state.items.push(item);
+            updateStats();
+        }
+
+        function gameLoop(timestamp) {
+            if (state.isRunning) {
+                const deltaTime = timestamp - state.lastUpdate;
+                updateSimulation(deltaTime * state.speed);
+            }
+            state.lastUpdate = timestamp;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateSimulation(deltaTime) {
+            // Update spawners
+            state.equipment.filter(e => e.type === 'spawner').forEach(spawner => {
+                if (Date.now() - spawner.lastSpawn > spawner.spawnInterval / state.speed) {
+                    spawnItem(spawner.x, spawner.y, 'ore', spawner.direction);
+                    spawner.lastSpawn = Date.now();
+                }
+            });
+
+            // Update smelters
+            state.equipment.filter(e => e.type === 'smelter').forEach(smelter => {
+                updateSmelter(smelter);
+            });
+
+            // Update items on conveyors
+            state.items.forEach(item => {
+                if (!item.inSmelter) {
+                    updateItem(item, deltaTime);
+                }
+            });
+
+            // Remove items that went off-grid
+            state.items = state.items.filter(item => {
+                if (item.x < 0 || item.y < 0 || item.x >= state.gridWidth || item.y >= state.gridHeight) {
+                    if (item.element) item.element.remove();
+                    return false;
+                }
+                return true;
+            });
+
+            updateStats();
+        }
+
+        function updateItem(item, deltaTime) {
+            const speed = 0.002 * deltaTime; // cells per ms
+            const gridX = Math.floor(item.x);
+            const gridY = Math.floor(item.y);
+
+            // Check if item is on a smelter input
+            const equipment = state.grid[gridY]?.[gridX]?.equipment;
+
+            if (equipment) {
+                if (equipment.type === 'smelter' && item.type === 'ore') {
+                    // Check if entering from input side
+                    if (isAtSmelterInput(item, equipment)) {
+                        // Add to smelter input buffer
+                        equipment.inputBuffer.push(item);
+                        item.inSmelter = true;
+                        if (item.element) item.element.style.display = 'none';
+                        return;
+                    }
+                }
+
+                if (equipment.type === 'conveyor' || equipment.type === 'spawner') {
+                    item.direction = equipment.direction;
+                }
+            }
+
+            // Move item
+            const dir = DIR_VECTORS[item.direction];
+            item.x += dir.x * speed;
+            item.y += dir.y * speed;
+
+            // Update visual
+            if (item.element) {
+                item.element.style.left = (item.x * 40) + 'px';
+                item.element.style.top = (item.y * 40) + 'px';
+            }
+        }
+
+        function isAtSmelterInput(item, smelter) {
+            const relX = item.x - smelter.x;
+            const relY = item.y - smelter.y;
+
+            switch (smelter.rotation) {
+                case 0: return relX < 0.5 && relY >= 0 && relY < 3; // Input from left
+                case 1: return relY < 0.5 && relX >= 0 && relX < 3; // Input from top
+                case 2: return relX > 2.5 && relY >= 0 && relY < 3; // Input from right
+                case 3: return relY > 2.5 && relX >= 0 && relX < 3; // Input from bottom
+            }
+            return false;
+        }
+
+        function updateSmelter(smelter) {
+            // Process input to output
+            if (smelter.processingItem) {
+                if (Date.now() - smelter.processStart > smelter.processTime / state.speed) {
+                    // Processing complete, output ingot
+                    const outputPos = getSmelterOutputPosition(smelter);
+                    spawnItem(outputPos.x, outputPos.y, 'ingot', smelter.direction);
+                    smelter.processingItem = null;
+                    state.processedCount++;
+                }
+            } else if (smelter.inputBuffer.length > 0) {
+                // Start processing
+                const item = smelter.inputBuffer.shift();
+                if (item.element) item.element.remove();
+                state.items = state.items.filter(i => i.id !== item.id);
+                smelter.processingItem = item;
+                smelter.processStart = Date.now();
+            }
+        }
+
+        function getSmelterOutputPosition(smelter) {
+            switch (smelter.rotation) {
+                case 0: return { x: smelter.x + 3, y: smelter.y + 1 }; // Output right
+                case 1: return { x: smelter.x + 1, y: smelter.y + 3 }; // Output bottom
+                case 2: return { x: smelter.x - 1, y: smelter.y + 1 }; // Output left
+                case 3: return { x: smelter.x + 1, y: smelter.y - 1 }; // Output top
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('item-count').textContent = state.items.length;
+            document.getElementById('processed-count').textContent = state.processedCount;
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
